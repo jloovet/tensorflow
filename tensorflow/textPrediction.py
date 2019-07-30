@@ -9,7 +9,7 @@ import tensorflow.keras as kr
 import numpy as np
 import random
 
-SIZE = 10
+SIZE = 30
 
 
 # In[2]:
@@ -38,7 +38,8 @@ def oneHot(ch) :
     result = [0.0] * len(chars)
     result[i] = 1.0
     return result
-   
+
+
     
 
 
@@ -56,11 +57,11 @@ def oneHotString(chars) :
 
 #skapa layers
 #layer_1_inner = kr.layers.Dense(25, kr.activations.relu)
-layer_1_inner = kr.layers.Dense(25, kr.activations.selu)
+layer_1_inner = kr.layers.Dense(50, kr.activations.selu)
 
 layer_1 = kr.layers.TimeDistributed(layer_1_inner, input_shape=(SIZE,len(chars)))
 
-layer_2 = kr.layers.Dense(128, kr.activations.relu)
+layer_2 = kr.layers.Dense(256, kr.activations.relu)
 layer_3 = kr.layers.Dense(len(chars), kr.activations.sigmoid)
 
 
@@ -77,7 +78,7 @@ kr.initializers.Initializer()
 #@tf.function
 def getOutput(x) :
     x = layer_1(x)
-    x = tf.reshape(x,(-1, SIZE*25))
+    x = tf.reshape(x,(-1, SIZE*50))
     x = layer_2(x)
     x = layer_3(x)
     return x
@@ -86,13 +87,13 @@ def getOutput(x) :
     
 
 
-# In[9]:
-
-
-getOutput(np.array([oneHotString("sssoedfkwpdcprdmqaxc")]))
-
-
 # In[10]:
+
+
+getOutput(np.array([oneHotString("x" * SIZE)]))
+
+
+# In[11]:
 
 
 cce = tf.keras.losses.CategoricalCrossentropy()
@@ -104,7 +105,7 @@ def getLoss(x,y) :
     return loss
 
 
-# In[11]:
+# In[12]:
 
 
 opt = kr.optimizers.Adam(learning_rate=0.001)
@@ -116,16 +117,17 @@ def train(x,y) :
         loss = getLoss(x,y)
     grads = t.gradient(loss, tranableVariables) 
     opt.apply_gradients(zip(grads, tranableVariables))
+    return loss
         
 
 
-# In[12]:
+# In[13]:
 
 
 #skapa batchar
 
 
-# In[20]:
+# In[14]:
 
 
 batchSize = 256
@@ -148,7 +150,7 @@ def generateBatches() :
         
 
 
-# In[21]:
+# In[15]:
 
 
 def generateString(l) :
@@ -168,21 +170,25 @@ def generateString(l) :
 
 epoch = 0
 while True :
+    lossList = []
     iterator = generateBatches()
-    #skriv 10 exempel till fil för varje epoch (genomgång av testdatat)
-    epoch += 1
-    print("epoch", epoch)
-    with open("save-" + str(epoch) + ".txt", "w") as f :
-        for i in range(10) :
-            f.write("\n===== Ex " + str(i) + "==== \n")
-            f.write(generateString(300))
+
     cnt = 0
     for (x,y) in iterator :
-        train(x,y)
+        lossList.append(train(x,y).numpy())
         cnt += 1
         if cnt % 1000 == 0 :
             print("generateString:", generateString(100))
             print("count",cnt, "  Loss = ", getLoss(x,y))
+            
+            
         
-        
+    #skriv 10 exempel till fil för varje epoch (genomgång av testdatat)
+    epoch += 1
+    print("epoch", epoch)
+    with open("save-" + str(epoch) + ".txt", "w") as f :
+        f.write("Current loss: " + str(sum(lossList)/len(lossList)))  
+        for i in range(10) :
+            f.write("\n===== Ex " + str(i) + "==== \n")
+            f.write(generateString(300)) 
 
